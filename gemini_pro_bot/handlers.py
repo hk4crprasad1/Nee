@@ -894,8 +894,11 @@ Send a message to the bot to generate a response.
 """
     await update.message.reply_text(help_text)
 
-keyboard = [[InlineKeyboardButton("👍", callback_data="feedback_positive"),
-             InlineKeyboardButton("👎", callback_data="feedback_negative")]]
+keyboard = [
+    [InlineKeyboardButton("👍", callback_data="feedback_positive"),
+     InlineKeyboardButton("👎", callback_data="feedback_negative")],
+    [InlineKeyboardButton("♾️JOIN CHANNEL♾️", url='https://t.me/+Rw7TeecY0ek2MTc1')]
+]
 reply_markup = InlineKeyboardMarkup(keyboard)
 
 async def newchat_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -54,14 +54,14 @@ WAITING_FOR_JOIN = 1
 
 async def check_channel_membership(update: Update, context: CallbackContext) -> int:
     user_id = update.effective_user.id
-    channel_id = -1002102707069  # Replace with your channel ID
+    channel_id = -1002054833510  # Replace with your channel ID
     
     userids = await main()
     if user_id in userids:
         await start(update, context)
     else:
         keyboard = [
-                [InlineKeyboardButton("Join Channel", url='https://t.me/+BoXdjlgvL1ZiN2E1')]
+                [InlineKeyboardButton("Join Channel", url='https://t.me/+_hkGTH_Z2B02OWE9')]
             ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("To use the bot, please join our channel.", reply_markup=reply_markup)

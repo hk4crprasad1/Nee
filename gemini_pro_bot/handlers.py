@@ -42,7 +42,7 @@ bot_token = os.getenv('BOT_TOKEN')
 async def main():
     async with Client("my_session", api_id, api_hash, bot_token=bot_token) as app:
         # Replace '-1002092555838' with your actual channel ID
-        channel_id = -1002102707069
+        channel_id = -1002054833510
     
         # Get chat members
         members = []
@@ -1068,7 +1068,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Sleep for a bit to prevent the bot from getting rate-limited
     else:
         keyboard = [
-                [InlineKeyboardButton("Join Channel", url='https://t.me/+BoXdjlgvL1ZiN2E1')]
+                [InlineKeyboardButton("Join Channel", url='https://t.me/+_hkGTH_Z2B02OWE9')]
             ]
         board = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("To use the bot, please join our channel.", reply_markup=board)
@@ -1153,7 +1153,7 @@ async def handle_image(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
                     )
     else:
         keyboard = [
-                [InlineKeyboardButton("Join Channel", url='https://t.me/+BoXdjlgvL1ZiN2E1')]
+                [InlineKeyboardButton("Join Channel", url='https://t.me/+_hkGTH_Z2B02OWE9')]
             ]
         board = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("To use the bot, please join our channel.", reply_markup=board)
@@ -1172,11 +1172,10 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if await check_membership(update, context):
         
         if context.chat_data.get("chat") is None:
-            new_chat(context)
-        try:
-            user_id = update.effective_user.id
-        except Exception:
-            user_id = 1722478636
+            new_chat(context):
+        
+        user_id = update.effective_user.id
+        
         username = update.effective_user.username
         current_datetime = datetime.datetime.now()
         formatted_time = current_datetime.strftime("%H:%M%S")
@@ -1332,7 +1331,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Wait for the completion of text update
     else:
         keyboard = [
-                [InlineKeyboardButton("Join Channel", url='https://t.me/+BoXdjlgvL1ZiN2E1')]
+                [InlineKeyboardButton("Join Channel", url='https://t.me/+_hkGTH_Z2B02OWE9')]
             ]
         board = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("To use the bot, please join our channel.", reply_markup=board)
@@ -1431,7 +1430,7 @@ async def broadcast_cancel(update, context):
 async def check_membership(update: Update, context: CallbackContext) -> bool:
     userids = await main()
     user_id = update.effective_user.id
-    channel_id = -1002102707069  # Replace with your channel ID
+    channel_id = -1002054833510  # Replace with your channel ID
 
     if user_id in userids:
         return True

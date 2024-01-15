@@ -114,7 +114,8 @@ def start_bot() -> None:
 
     # Any voice message is sent to LLM to generate a response (only if joined)
     application.add_handler(MessageHandler(AuthorizedUserFilter() & ~filters.COMMAND & filters.VOICE, handle_voice))
-
+    
+    application.add_handler(CallbackQueryHandler(handle_feedback_button))
     # Initialize the database when the bot starts
     asyncio.get_event_loop().run_until_complete(init_db())
 

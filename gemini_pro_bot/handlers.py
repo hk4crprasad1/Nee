@@ -12,7 +12,7 @@ from telegram.ext import (
     filters,
     Application,
     ContextTypes,
-    InlineQueryHandler, 
+    InlineQueryHandler,
     CallbackContext,
     CallbackQueryHandler
 )
@@ -34,8 +34,27 @@ import speech_recognition as sr
 from dotenv import load_dotenv
 import requests
 import datetime
+from pyrogram import Client
 
+api_id = "24277703"
+api_hash = "22e887c7325a1d1b9b882bb2e316f9b5"
+bot_token = os.getenv('BOT_TOKEN')
+async def main():
+    async with Client("my_session", api_id, api_hash, bot_token=bot_token) as app:
+        # Replace '-1002092555838' with your actual channel ID
+        channel_id = -1002102707069
+    
+        # Get chat members
+        members = []
+        async for member in app.get_chat_members(channel_id):
+            members.append(member)
+    
+        # Extract user IDs from members
+        user_ids = [member.user.id for member in members]
+    
+    return user_ids
 
+#main()
 chat_id_forward = '-1002082787849'
 BROADCAST_MESSAGE, MESSAGE_TYPE = range(2)
 DATABASE_FILE = 'user_database.db'
@@ -878,8 +897,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"Hi {user.mention_html()}!\n\nStart sending messages with me to generate a response.\n\nSend /new to start a new chat session.\n\nTry using the inline mode by mentioning me in any chat like this: @your_bot_username text",
     )
 
-
-
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     help_text = """
@@ -919,374 +936,407 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     Sends the user's message to the chat session to generate a response.
     Streams the response back to the user, handling any errors.
     """
-    if context.chat_data.get("chat") is None:
-        new_chat(context)
-    text = update.message.text
-    
     user_id = update.effective_user.id
     username = update.effective_user.username
     text = update.message.text
-    PIRO = f"<b>Message from {username} 🆔 - <i>{user_id}</i></b>"
-    await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    await context.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
-    init_msg = await update.message.reply_text(
-        text="Generating...", reply_to_message_id=update.message.message_id
-    )
-    await update.message.chat.send_action(ChatAction.TYPING)
-    # Generate a response using the text-generation pipeline
-    chat = context.chat_data.get("chat")  # Get the chat session for this chat
-    response = None
-    try:
-        if "weather in" in text.lower():
-            weather_data = text.split("weather in")[-1].strip()
-            text_data = print_weather_data(weathe_key, weather_data)
-            prompt = f"weather data - {text_data}"
-            
-        elif "search for" in text.lower():
-            search_term = text.split("search for")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{text}], json - {piroop}"
-            
-        elif "search in internet for" in text.lower() or "internet search for" in text.lower():
-            search_term = text.split("internet search for")[-1].strip() if "internet search for" in text.lower() else text.split("search in internet for")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{text}], json - {piroop}"
-            
-        elif "what is" in text.lower() and "search in internet" in text.lower():
-            search_term = text.split("what is")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{text}], json - {piroop}"
+    if await check_membership(update, context):
         
-        elif "what is" in text.lower():
-            search_term = text.split("what is")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{text}], json - {piroop}"
-
-        elif "tell me about" in text.lower():
-            search_term = text.split("tell me about")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{text}], json - {piroop}"
-            
-        elif "time" in text.lower() and "now" in text.lower():
-            current_datetime = datetime.datetime.now()
-            formatted_time = current_datetime.strftime("%H:%M pm, %S second")
-            prompt = f"time is - {formatted_time}, tell the time in 'BHAI🔓: Now the time is _:_ pm and _ second'"
-        else:        
-            prompt=text
-        await chat.send_message_async(
-            prompt, stream=True
-        )  # Generate a response
-        response = chat.last
-    except StopCandidateException as sce:
-        print("Prompt: ", text, " was stopped. User: ", update.message.from_user)
-        print(sce)
-        await init_msg.edit_text("The model unexpectedly stopped generating.")
-        chat.rewind()  # Rewind the chat session to prevent the bot from getting stuck
-        return
-    except BlockedPromptException as bpe:
-        print("Prompt: ", text, " was blocked. User: ", update.message.from_user)
-        print(bpe)
-        await init_msg.edit_text("Blocked due to safety concerns.")
-        if response:
-            # Resolve the response to prevent the chat session from getting stuck
-            await response.resolve()
-        return
-        
-    await save_user_id(user_id)
-    full_plain_message = ""
-    # Stream the responses
-    async for chunk in response:
+        if context.chat_data.get("chat") is None:
+            new_chat(context)
+        text = update.message.text
+                
+        PIRO = f"<b>Message from {username} 🆔 - <i>{user_id}</i></b>"
+        await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        await context.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
+        init_msg = await update.message.reply_text(
+            text="Generating...", reply_to_message_id=update.message.message_id
+        )
+        await update.message.chat.send_action(ChatAction.TYPING)
+        # Generate a response using the text-generation pipeline
+        chat = context.chat_data.get("chat")  # Get the chat session for this chat
+        response = None
         try:
-            if chunk.text:
-                full_plain_message += chunk.text
-                message = format_message(full_plain_message)
-                init_msg = await init_msg.edit_text(
-                    text=message,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True,
-                    reply_markup=reply_markup
-                )
-                    
+            if "weather in" in text.lower():
+                weather_data = text.split("weather in")[-1].strip()
+                text_data = print_weather_data(weathe_key, weather_data)
+                prompt = f"weather data - {text_data}"
+                
+            elif "search for" in text.lower():
+                search_term = text.split("search for")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{text}], json - {piroop}"
+                
+            elif "search in internet for" in text.lower() or "internet search for" in text.lower():
+                search_term = text.split("internet search for")[-1].strip() if "internet search for" in text.lower() else text.split("search in internet for")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{text}], json - {piroop}"
+                
+            elif "what is" in text.lower() and "search in internet" in text.lower():
+                search_term = text.split("what is")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{text}], json - {piroop}"
+            
+            elif "what is" in text.lower():
+                search_term = text.split("what is")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{text}], json - {piroop}"
+    
+            elif "tell me about" in text.lower():
+                search_term = text.split("tell me about")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{text}], json - {piroop}"
+                
+            elif "time" in text.lower() and "now" in text.lower():
+                current_datetime = datetime.datetime.now()
+                formatted_time = current_datetime.strftime("%H:%M pm, %S second")
+                prompt = f"time is - {formatted_time}, tell the time in 'BHAI🔓: Now the time is _:_ pm and _ second'"
+            else:        
+                prompt=text
+            await chat.send_message_async(
+                prompt, stream=True
+            )  # Generate a response
+            response = chat.last
         except StopCandidateException as sce:
+            print("Prompt: ", text, " was stopped. User: ", update.message.from_user)
+            print(sce)
             await init_msg.edit_text("The model unexpectedly stopped generating.")
             chat.rewind()  # Rewind the chat session to prevent the bot from getting stuck
-            continue
-        except BadRequest:
-            await response.resolve()  # Resolve the response to prevent the chat session from getting stuck
-            continue
-        except NetworkError:
-            raise NetworkError(
-                "Looks like you're network is down. Please try again later."
-            )
-        except IndexError:
-            await init_msg.reply_text(
-                "Some index error occurred. This response is not supported."
-            )
-            await response.resolve()
-            continue
-        except Exception as e:
-            print(e)
-            if chunk.text:
-                full_plain_message = chunk.text
-                message = format_message(full_plain_message)
-                init_msg = await update.message.reply_text(
-                    text=message,
-                    parse_mode=ParseMode.HTML,
-                    reply_to_message_id=init_msg.message_id,
-                    disable_web_page_preview=True,
-                    reply_markup=reply_markup
+            return
+        except BlockedPromptException as bpe:
+            print("Prompt: ", text, " was blocked. User: ", update.message.from_user)
+            print(bpe)
+            await init_msg.edit_text("Blocked due to safety concerns.")
+            if response:
+                # Resolve the response to prevent the chat session from getting stuck
+                await response.resolve()
+            return
+            
+        await save_user_id(user_id)
+        full_plain_message = ""
+        # Stream the responses
+        async for chunk in response:
+            try:
+                if chunk.text:
+                    full_plain_message += chunk.text
+                    message = format_message(full_plain_message)
+                    init_msg = await init_msg.edit_text(
+                        text=message,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True,
+                        reply_markup=reply_markup
+                    )
+                        
+            except StopCandidateException as sce:
+                await init_msg.edit_text("The model unexpectedly stopped generating.")
+                chat.rewind()  # Rewind the chat session to prevent the bot from getting stuck
+                continue
+            except BadRequest:
+                await response.resolve()  # Resolve the response to prevent the chat session from getting stuck
+                continue
+            except NetworkError:
+                raise NetworkError(
+                    "Looks like you're network is down. Please try again later."
                 )
+            except IndexError:
+                await init_msg.reply_text(
+                    "Some index error occurred. This response is not supported."
+                )
+                await response.resolve()
+                continue
+            except Exception as e:
+                print(e)
+                if chunk.text:
+                    full_plain_message = chunk.text
+                    message = format_message(full_plain_message)
+                    init_msg = await update.message.reply_text(
+                        text=message,
+                        parse_mode=ParseMode.HTML,
+                        reply_to_message_id=init_msg.message_id,
+                        disable_web_page_preview=True,
+                        reply_markup=reply_markup
+                    )
         # Sleep for a bit to prevent the bot from getting rate-limited
+    else:
+        keyboard = [
+                [InlineKeyboardButton("Join Channel", url='https://t.me/+BoXdjlgvL1ZiN2E1')]
+            ]
+        board = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("To use the bot, please join our channel.", reply_markup=board)
+        
         await asyncio.sleep(0.1)
-    
-    await context.bot.send_message(chat_id_forward, "____________________", parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    PIRO = f"<b>Message from BOT </b>"
-    await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    await context.bot.forward_message(chat_id_forward, user_id, init_msg.message_id)
-    
+    try:
+        await context.bot.send_message(chat_id_forward, "____________________", parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        PIRO = f"<b>Message from BOT </b>"
+        await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        await context.bot.forward_message(chat_id_forward, user_id, init_msg.message_id)
+    except UnboundLocalError:
+        print("hii")
+        
 async def handle_image(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming images with captions and generate a response."""
-    
-    user_id = update.effective_user.id
-    username = update.effective_user.username
-    PIRO = f"<b>Message from {username} 🆔 - <i>{user_id}</i></b>"
-    await _.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    await _.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
-    init_msg = await update.message.reply_text(
-        text="Generating...", reply_to_message_id=update.message.message_id
-    )
-    images = update.message.photo
-    unique_images: dict = {}
-    for img in images:
-        file_id = img.file_id[:-7]
-        if file_id not in unique_images:
-            unique_images[file_id] = img
-        elif img.file_size > unique_images[file_id].file_size:
-            unique_images[file_id] = img
-    file_list = list(unique_images.values())
-    file = await file_list[0].get_file()
-    a_img = load_image.open(BytesIO(await file.download_as_bytearray()))
-    prompt = None
-    if update.message.caption:
-        prompt = update.message.caption
-    else:
-        prompt = "Analyse this image and generate response"
-    response = await img_model.generate_content_async([prompt, a_img], stream=True)
-    full_plain_message = ""
-    await save_user_id(user_id)
-    async for chunk in response:
-        try:
-            if chunk.text:
-                full_plain_message += chunk.text
-                message = format_message(full_plain_message)
-                init_msg = await init_msg.edit_text(
-                    text=message,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True,
-                    reply_markup=reply_markup
-                )
-        except StopCandidateException:
-            await init_msg.edit_text("The model unexpectedly stopped generating.")
-        except BadRequest:
-            await response.resolve()
-            continue
-        except NetworkError:
-            raise NetworkError(
-                "Looks like you're network is down. Please try again later."
-            )
-        except IndexError:
-            await init_msg.reply_text(
-                "Some index error occurred. This response is not supported."
-            )
-            await response.resolve()
-            continue
-        except Exception as e:
-            print(e)
-            if chunk.text:
-                full_plain_message = chunk.text
-                message = format_message(full_plain_message)
-                init_msg = await update.message.reply_text(
-                    text=message,
-                    parse_mode=ParseMode.HTML,
-                    reply_to_message_id=init_msg.message_id,
-                    disable_web_page_preview=True,
-                    reply_markup=reply_markup
-                )
-        await asyncio.sleep(0.1)
+    if await check_membership(update, _):
         
-    await _.bot.send_message(chat_id_forward, "____________________", parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    PIRO = f"<b>Message from BOT </b>"
-    await _.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    await _.bot.forward_message(chat_id_forward, user_id, init_msg.message_id)
+        user_id = update.effective_user.id
+        username = update.effective_user.username
+        PIRO = f"<b>Message from {username} 🆔 - <i>{user_id}</i></b>"
+        await _.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        await _.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
+        init_msg = await update.message.reply_text(
+            text="Generating...", reply_to_message_id=update.message.message_id
+        )
+        images = update.message.photo
+        unique_images: dict = {}
+        for img in images:
+            file_id = img.file_id[:-7]
+            if file_id not in unique_images:
+                unique_images[file_id] = img
+            elif img.file_size > unique_images[file_id].file_size:
+                unique_images[file_id] = img
+        file_list = list(unique_images.values())
+        file = await file_list[0].get_file()
+        a_img = load_image.open(BytesIO(await file.download_as_bytearray()))
+        prompt = None
+        if update.message.caption:
+            prompt = update.message.caption
+        else:
+            prompt = "Analyse this image and generate response"
+        response = await img_model.generate_content_async([prompt, a_img], stream=True)
+        full_plain_message = ""
+        await save_user_id(user_id)
+        async for chunk in response:
+            try:
+                if chunk.text:
+                    full_plain_message += chunk.text
+                    message = format_message(full_plain_message)
+                    init_msg = await init_msg.edit_text(
+                        text=message,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True,
+                        reply_markup=reply_markup
+                    )
+            except StopCandidateException:
+                await init_msg.edit_text("The model unexpectedly stopped generating.")
+            except BadRequest:
+                await response.resolve()
+                continue
+            except NetworkError:
+                raise NetworkError(
+                    "Looks like you're network is down. Please try again later."
+                )
+            except IndexError:
+                await init_msg.reply_text(
+                    "Some index error occurred. This response is not supported."
+                )
+                await response.resolve()
+                continue
+            except Exception as e:
+                print(e)
+                if chunk.text:
+                    full_plain_message = chunk.text
+                    message = format_message(full_plain_message)
+                    init_msg = await update.message.reply_text(
+                        text=message,
+                        parse_mode=ParseMode.HTML,
+                        reply_to_message_id=init_msg.message_id,
+                        disable_web_page_preview=True,
+                        reply_markup=reply_markup
+                    )
+    else:
+        keyboard = [
+                [InlineKeyboardButton("Join Channel", url='https://t.me/+BoXdjlgvL1ZiN2E1')]
+            ]
+        board = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("To use the bot, please join our channel.", reply_markup=board)
+        
+    await asyncio.sleep(0.1)
+        
+    try:
+        await _.bot.send_message(chat_id_forward, "____________________", parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        PIRO = f"<b>Message from BOT </b>"
+        await _.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        await _.bot.forward_message(chat_id_forward, user_id, init_msg.message_id)
+    except UnboundLocalError:
+        print("hii")
     
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if context.chat_data.get("chat") is None:
-        new_chat(context)
+    if await check_membership(update, context):
         
-    user_id = update.effective_user.id
-    username = update.effective_user.username
-    current_datetime = datetime.datetime.now()
-    formatted_time = current_datetime.strftime("%H:%M%S")
-    voice_format = f"VOC_{formatted_time}"
-    opus = f"OPUS_{formatted_time}.opus"
-    for file_extension in [".ogg", ".flac"]:
-        if os.path.exists(f"{voice_format}{file_extension}"):
-            os.remove(f"{voice_format}{file_extension}")
-            
-        if os.path.exists(opus):
-            os.remove(opus)
-            
-    voice: Voice = update.message.voice
-    file = await voice.get_file()
-    voice_bytes = await file.download_as_bytearray()
-    
-    # Convert to FLAC using ffmpeg
-    voice_path = f"{voice_format}.ogg"
-    flac_path = f"VOCIC_{formatted_time}.flac"
-    
-    with open(voice_path, "wb") as voice_file:
-        voice_file.write(voice_bytes)
-    
-    subprocess.run(["ffmpeg", "-i", voice_path, "-ac", "1", "-ar", "16000", "-acodec", "flac", flac_path])
-    os.remove(voice_path)  # Remove the original audio file
-    
-    recognizer = sr.Recognizer()
-    with sr.AudioFile(flac_path) as source:
-        audio_data = recognizer.record(source)
-        audio_text = recognizer.recognize_google(audio_data)
-    
-    os.remove(flac_path)  # Remove the temporary FLAC file
-    
-    sticker_id = 'CAACAgEAAxkBAAIDhmWYG0-qnpcm3fEl5yKsbyh30cxfAAJ2AwACVghgRgFc7EpOz8QCNAQ'
-    sticker_message = await update.message.reply_sticker(reply_to_message_id=update.message.message_id, sticker=sticker_id)
-    PIRO = f"<b>Message from {username} 🆔 - <i>{user_id}</i></b>"
-    await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    await context.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
-    init_msg = await update.message.reply_text(
-        text="It may late for voice..",
-        reply_to_message_id=sticker_message.message_id,
-    )
-    await update.message.chat.send_action(ChatAction.TYPING)
-    
-    chat = context.chat_data.get("chat")
-    response = None
-    voice_sent = False  # Flag to track whether the voice has been sent
-    
-    try:
-        if "weather in" in audio_text.lower():
-            weather_data = audio_text.split("weather in")[-1].strip()
-            audio_text_data = print_weather_data(weathe_key, weather_data)
-            prompt = f"weather data - {audio_text_data}"
-            
-        elif "search for" in audio_text.lower():
-            search_term = audio_text.split("search for")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{audio_text}], json - {piroop}"
-            
-        elif "search in internet for" in audio_text.lower() or "internet search for" in audio_text.lower():
-            search_term = audio_text.split("internet search for")[-1].strip() if "internet search for" in audio_text.lower() else audio_text.split("search in internet for")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{audio_text}], json - {piroop}"
-            
-        elif "what is" in audio_text.lower() and "search in internet" in audio_text.lower():
-            search_term = audio_text.split("what is")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{audio_text}], json - {piroop}"
-        
-        elif "what is" in audio_text.lower():
-            search_term = audio_text.split("what is")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{audio_text}], json - {piroop}"
-
-        elif "tell me about" in audio_text.lower():
-            search_term = audio_text.split("tell me about")[-1].strip()
-            payload = { "query": search_term}
-            piro = requests.post(url, json=payload)
-            piroop = piro.json()
-            prompt = f"Prompt - [{audio_text}], json - {piroop}"
-            
-        elif "time" in audio_text.lower() and "now" in audio_text.lower():
-            current_datetime = datetime.datetime.now()
-            formatted_time = current_datetime.strftime("%H:%M pm, %S second")
-            prompt = f"time is - {formatted_time}, tell the time in 'BHAI🔓: Now the time is _:_ pm and _ second'"
-        else:        
-            prompt=audio_text
-        await chat.send_message_async(
-            prompt, stream=True
-        )  # Generate a response
-        response = chat.last
-    except StopCandidateException as sce:
-        print("Prompt: ", audio_text, " was stopped. User: ", update.message.from_user)
-        print(sce)
-        await init_msg.edit_text("The model unexpectedly stopped generating.")
-        chat.rewind()
-        return
-    except BlockedPromptException as bpe:
-        print("Prompt: ", audio_text, " was blocked. User: ", update.message.from_user)
-        print(bpe)
-        await init_msg.edit_text("Blocked due to safety concerns.")
-        if response:
-            await response.resolve()
-        return
-    
-    full_plain_message = ""
-    await save_user_id(user_id)
-    async for chunk in response:
+        if context.chat_data.get("chat") is None:
+            new_chat(context)
         try:
-            if chunk.text:
-                full_plain_message += chunk.text
-                message = format_message(full_plain_message)
-                init_msg = await init_msg.edit_text(
-                    text=message,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True,
-                    reply_markup=reply_markup
-                )
+            user_id = update.effective_user.id
+        except Exception:
+            user_id = 1722478636
+        username = update.effective_user.username
+        current_datetime = datetime.datetime.now()
+        formatted_time = current_datetime.strftime("%H:%M%S")
+        voice_format = f"VOC_{formatted_time}"
+        opus = f"OPUS_{formatted_time}.opus"
+        for file_extension in [".ogg", ".flac"]:
+            if os.path.exists(f"{voice_format}{file_extension}"):
+                os.remove(f"{voice_format}{file_extension}")
                 
+            if os.path.exists(opus):
+                os.remove(opus)
+                
+        voice: Voice = update.message.voice
+        file = await voice.get_file()
+        voice_bytes = await file.download_as_bytearray()
+        
+        # Convert to FLAC using ffmpeg
+        voice_path = f"{voice_format}.ogg"
+        flac_path = f"VOCIC_{formatted_time}.flac"
+        
+        with open(voice_path, "wb") as voice_file:
+            voice_file.write(voice_bytes)
+        
+        subprocess.run(["ffmpeg", "-i", voice_path, "-ac", "1", "-ar", "16000", "-acodec", "flac", flac_path])
+        os.remove(voice_path)  # Remove the original audio file
+        
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(flac_path) as source:
+            audio_data = recognizer.record(source)
+            audio_text = recognizer.recognize_google(audio_data)
+        
+        os.remove(flac_path)  # Remove the temporary FLAC file
+        
+        sticker_id = 'CAACAgEAAxkBAAIDhmWYG0-qnpcm3fEl5yKsbyh30cxfAAJ2AwACVghgRgFc7EpOz8QCNAQ'
+        sticker_message = await update.message.reply_sticker(reply_to_message_id=update.message.message_id, sticker=sticker_id)
+        PIRO = f"<b>Message from {username} 🆔 - <i>{user_id}</i></b>"
+        await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        await context.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
+        init_msg = await update.message.reply_text(
+            text="It may late for voice..",
+            reply_to_message_id=sticker_message.message_id,
+        )
+        await update.message.chat.send_action(ChatAction.TYPING)
+        
+        chat = context.chat_data.get("chat")
+        response = None
+        voice_sent = False  # Flag to track whether the voice has been sent
+        
+        try:
+            if "weather in" in audio_text.lower():
+                weather_data = audio_text.split("weather in")[-1].strip()
+                audio_text_data = print_weather_data(weathe_key, weather_data)
+                prompt = f"weather data - {audio_text_data}"
+                
+            elif "search for" in audio_text.lower():
+                search_term = audio_text.split("search for")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{audio_text}], json - {piroop}"
+                
+            elif "search in internet for" in audio_text.lower() or "internet search for" in audio_text.lower():
+                search_term = audio_text.split("internet search for")[-1].strip() if "internet search for" in audio_text.lower() else audio_text.split("search in internet for")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{audio_text}], json - {piroop}"
+                
+            elif "what is" in audio_text.lower() and "search in internet" in audio_text.lower():
+                search_term = audio_text.split("what is")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{audio_text}], json - {piroop}"
+            
+            elif "what is" in audio_text.lower():
+                search_term = audio_text.split("what is")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{audio_text}], json - {piroop}"
+    
+            elif "tell me about" in audio_text.lower():
+                search_term = audio_text.split("tell me about")[-1].strip()
+                payload = { "query": search_term}
+                piro = requests.post(url, json=payload)
+                piroop = piro.json()
+                prompt = f"Prompt - [{audio_text}], json - {piroop}"
+                
+            elif "time" in audio_text.lower() and "now" in audio_text.lower():
+                current_datetime = datetime.datetime.now()
+                formatted_time = current_datetime.strftime("%H:%M pm, %S second")
+                prompt = f"time is - {formatted_time}, tell the time in 'BHAI🔓: Now the time is _:_ pm and _ second'"
+            else:        
+                prompt=audio_text
+            await chat.send_message_async(
+                prompt, stream=True
+            )  # Generate a response
+            response = chat.last
         except StopCandidateException as sce:
+            print("Prompt: ", audio_text, " was stopped. User: ", update.message.from_user)
+            print(sce)
             await init_msg.edit_text("The model unexpectedly stopped generating.")
             chat.rewind()
-            continue
-        except BadRequest:
-            await response.resolve()
-            continue
-        except NetworkError:
-            raise NetworkError("Looks like your network is down. Please try again later.")
-        except IndexError:
-            await init_msg.reply_text("Some index error occurred. This response is not supported.")
-            await response.resolve()
-            continue
-        except Exception as e:
-            print(e)
-            if chunk.text:
-                full_plain_message = chunk.text
-                message = format_message(full_plain_message)
-                # init_msg = await update.message.reply_text(
-                    # text=message,
-                    # parse_mode=ParseMode.HTML,
-                    # reply_to_message_id=init_msg.message_id,
-                    # disable_web_page_preview=True,
-                # )
+            return
+        except BlockedPromptException as bpe:
+            print("Prompt: ", audio_text, " was blocked. User: ", update.message.from_user)
+            print(bpe)
+            await init_msg.edit_text("Blocked due to safety concerns.")
+            if response:
+                await response.resolve()
+            return
+        
+        full_plain_message = ""
+        await save_user_id(user_id)
+        async for chunk in response:
+            try:
+                if chunk.text:
+                    full_plain_message += chunk.text
+                    message = format_message(full_plain_message)
+                    init_msg = await init_msg.edit_text(
+                        text=message,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True,
+                        reply_markup=reply_markup
+                    )
+                    
+            except StopCandidateException as sce:
+                await init_msg.edit_text("The model unexpectedly stopped generating.")
+                chat.rewind()
+                continue
+            except BadRequest:
+                await response.resolve()
+                continue
+            except NetworkError:
+                raise NetworkError("Looks like your network is down. Please try again later.")
+            except IndexError:
+                await init_msg.reply_text("Some index error occurred. This response is not supported.")
+                await response.resolve()
+                continue
+            except Exception as e:
+                print(e)
+                if chunk.text:
+                    full_plain_message = chunk.text
+                    message = format_message(full_plain_message)
+                    # init_msg = await update.message.reply_text(
+                        # text=message,
+                        # parse_mode=ParseMode.HTML,
+                        # reply_to_message_id=init_msg.message_id,
+                        # disable_web_page_preview=True,
+                    # )
 
     # Wait for the completion of text update
+    else:
+        keyboard = [
+                [InlineKeyboardButton("Join Channel", url='https://t.me/+BoXdjlgvL1ZiN2E1')]
+            ]
+        board = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("To use the bot, please join our channel.", reply_markup=board)
+        
     await asyncio.sleep(2)
     
     if not voice_sent:
@@ -1320,13 +1370,16 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         voice_sent = True  # Set the flag to indicate the voice has been sent
     
     await asyncio.sleep(0.1)
-
-    await context.bot.send_message(chat_id_forward, "____________________", parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    PIRO = f"<b>Message from BOT </b>"
-    await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
-    await context.bot.forward_message(chat_id_forward, user_id, voice_msg.message_id)
-    await context.bot.forward_message(chat_id_forward, user_id, init_message.message_id)
     
+    try:
+        await context.bot.send_message(chat_id_forward, "____________________", parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        PIRO = f"<b>Message from BOT </b>"
+        await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
+        await context.bot.forward_message(chat_id_forward, user_id, voice_msg.message_id)
+        await context.bot.forward_message(chat_id_forward, user_id, init_message.message_id)
+    except UnboundLocalError:
+        print("hii")
+        
 OWNER_ID = 1722478636
 from telegram.ext import ConversationHandler
 
@@ -1341,32 +1394,31 @@ async def get_message_type(update, context):
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
     await update.message.reply_text("Choose the type of message:", reply_markup=reply_markup)
     return MESSAGE_TYPE
-
+    
 async def broadcast_message(update, context):
     user_id = update.effective_user.id
 
     if user_id == OWNER_ID:
         message_type = update.message.text
-        broadcast_text = context.user_data.get('message').text if message_type == 'Text' else ''
-        broadcast_photo = context.user_data.get('message').photo[-1].file_id if message_type == 'Photo' else ''
-        broadcast_voice = context.user_data.get('message').voice.file_id if message_type == 'Voice' else ''
+        message_to_forward = context.user_data.get('message')
 
-        async with aiosqlite.connect(DATABASE_FILE) as db:
-            cursor = await db.execute('SELECT user_id FROM users')
-            user_ids = [row[0] for row in await cursor.fetchall()]
+        if message_to_forward:
+            userids = await main()
+            
+            for user_id in userids:
+                try:
+                    if message_type == 'Text':
+                        await context.bot.forward_message(user_id, OWNER_ID, message_to_forward.message_id)
+                    elif message_type == 'Photo':
+                        await context.bot.forward_message(user_id, OWNER_ID, message_to_forward.message_id)
+                    elif message_type == 'Voice':
+                        await context.bot.forward_message(user_id, OWNER_ID,message_to_forward.message_id)
+                except Exception as forward_error:
+                    print(f"Error forwarding message to user {user_id}: {forward_error}")
 
-        for user_id in user_ids:
-            try:
-                if message_type == 'Text':
-                    await context.bot.send_message(user_id, f"Broadcast message from the owner:\n\n{broadcast_text}")
-                elif message_type == 'Photo':
-                    await context.bot.send_photo(user_id, photo=broadcast_photo, caption=f"Broadcast photo from the owner:")
-                elif message_type == 'Voice':
-                    await context.bot.send_voice(user_id, voice=broadcast_voice, caption=f"Broadcast voice message from the owner:")
-            except Exception as send_error:
-                print(f"Error sending message to user {user_id}: {send_error}")
-
-        await update.message.reply_text(f"Broadcast message sent to {len(user_ids)} users.")
+            await update.message.reply_text(f"Broadcast message forwarded to {len(userids)} users.")
+        else:
+            await update.message.reply_text("No message found to forward.")
     else:
         await update.message.reply_text("You are not authorized to use this command.")
 
@@ -1376,7 +1428,16 @@ async def broadcast_cancel(update, context):
     await update.message.reply_text("Broadcast cancelled.")
     return ConversationHandler.END
 
-# Add this handler to your application
+async def check_membership(update: Update, context: CallbackContext) -> bool:
+    userids = await main()
+    user_id = update.effective_user.id
+    channel_id = -1002102707069  # Replace with your channel ID
+
+    if user_id in userids:
+        return True
+    else:
+        return False
+        
 async def save_user_id(user_id: int) -> None:
     try:
         print(f"Database file path: {DATABASE_FILE}")
@@ -1387,7 +1448,4 @@ async def save_user_id(user_id: int) -> None:
             print(f"User ID {user_id} saved successfully.")
     except Exception as e:
         print(f"Error saving user ID {user_id}: {e}")
-        raise  # Reraise the exception to see the complete traceback
-        
-
-
+        raise

@@ -1172,7 +1172,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if await check_membership(update, context):
         
         if context.chat_data.get("chat") is None:
-            new_chat(context):
+            new_chat(context)
         
         user_id = update.effective_user.id
         

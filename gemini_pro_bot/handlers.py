@@ -949,7 +949,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
         await context.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
         init_msg = await update.message.reply_text(
-            text="Generating...", reply_to_message_id=update.message.message_id
+            text="🤏Wait...", reply_to_message_id=update.message.message_id
         )
         await update.message.chat.send_action(ChatAction.TYPING)
         # Generate a response using the text-generation pipeline
@@ -1092,7 +1092,7 @@ async def handle_image(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         await _.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
         await _.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
         init_msg = await update.message.reply_text(
-            text="Generating...", reply_to_message_id=update.message.message_id
+            text="🤏Wait...", reply_to_message_id=update.message.message_id
         )
         images = update.message.photo
         unique_images: dict = {}
@@ -1215,7 +1215,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await context.bot.send_message(chat_id_forward, PIRO, parse_mode=ParseMode.HTML,disable_web_page_preview=True)
         await context.bot.forward_message(chat_id_forward, user_id, update.message.message_id)
         init_msg = await update.message.reply_text(
-            text="It may late for voice..",
+            text="🤏Wait...",
             reply_to_message_id=sticker_message.message_id,
         )
         await update.message.chat.send_action(ChatAction.TYPING)

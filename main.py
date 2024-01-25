@@ -3,7 +3,7 @@ from gemini_pro_bot.bot import start_bot
 from flask import Flask,render_template
 from threading import Thread
 import os
-import streamlit as st
+"""import streamlit as st
 
 def main():
     st.title("Simple Streamlit App")
@@ -16,7 +16,7 @@ def main():
 
     # Display a greeting
     st.write(f"Hello, {user_input}!")
-    
+"""
 app = Flask(__name__)
 @app.route('/')
 def index():
